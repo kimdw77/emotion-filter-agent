@@ -2,10 +2,12 @@ import streamlit as st
 from emotion_analyzer import analyze_emotion
 from response_generator import generate_responses
 from character_profile import (
-    analyze_chat_screenshot,
     save_profile,
     load_profile,
     get_presets,
+    save_opponent_profile,
+    load_opponent_profile,
+    get_opponent_presets,
 )
 
 st.set_page_config(
@@ -59,6 +61,8 @@ st.markdown(
 # ──────────────────────────────────────────────
 if "profile" not in st.session_state:
     st.session_state.profile = load_profile()
+if "opponent_profile" not in st.session_state:
+    st.session_state.opponent_profile = load_opponent_profile()
 if "emotion_result" not in st.session_state:
     st.session_state.emotion_result = None
 if "responses" not in st.session_state:
@@ -69,79 +73,81 @@ if "responses" not in st.session_state:
 # 사이드바 — 캐릭터 프로필 설정
 # ──────────────────────────────────────────────
 with st.sidebar:
-    st.header("👤 내 캐릭터 프로필")
+    # ── 내 프로필 ──
+    st.header("👤 내 프로필")
     st.caption("나의 말투·성향을 설정하면 답변 제안에 반영됩니다.")
 
-    tab1, tab2, tab3 = st.tabs(["✏️ 직접 묘사", "🖼️ 이미지 분석", "🎭 프리셋"])
+    my_tab1, my_tab2 = st.tabs(["✏️ 직접 입력", "🎭 프리셋"])
 
-    # 탭 1: 텍스트 직접 묘사
-    with tab1:
+    with my_tab1:
         text_input = st.text_area(
             "나의 말투·성향 묘사",
             value=st.session_state.profile,
-            height=160,
+            height=120,
             placeholder='예: "나는 논리적이고 직설적인 편이다. 감정보다 사실 중심으로 말하고 싶어한다."',
             key="profile_text_input",
         )
-        if st.button("💾 프로필 저장", key="save_text"):
+        if st.button("💾 저장", key="save_text"):
             st.session_state.profile = text_input
             save_profile(text_input)
             st.success("저장됐습니다!")
 
-    # 탭 2: 이미지 업로드
-    with tab2:
-        st.caption("카카오톡·슬랙 등 내 대화 스크린샷을 업로드하면 말투를 자동 분석합니다.")
-        uploaded = st.file_uploader(
-            "스크린샷 업로드",
-            type=["png", "jpg", "jpeg", "webp"],
-            key="screenshot_uploader",
-        )
-        if uploaded is not None:
-            st.image(uploaded, use_column_width=True)
-            if st.button("🔍 말투 분석하기", key="analyze_img"):
-                with st.spinner("이미지 분석 중..."):
-                    media_map = {
-                        "png": "image/png",
-                        "jpg": "image/jpeg",
-                        "jpeg": "image/jpeg",
-                        "webp": "image/webp",
-                    }
-                    ext = uploaded.name.split(".")[-1].lower()
-                    media_type = media_map.get(ext, "image/png")
-                    profile_text = analyze_chat_screenshot(
-                        uploaded.read(), media_type=media_type
-                    )
-                    st.session_state.profile = profile_text
-                    save_profile(profile_text)
-                st.success("분석 완료! 프로필이 저장됐습니다.")
-                st.text_area("분석된 말투", value=profile_text, height=120, disabled=True)
-
-    # 탭 3: 프리셋 선택
-    with tab3:
+    with my_tab2:
         presets = get_presets()
         selected_preset = st.selectbox(
-            "캐릭터 유형 선택",
+            "유형 선택",
             options=list(presets.keys()),
             key="preset_select",
         )
-        st.text_area(
-            "프리셋 내용",
-            value=presets[selected_preset],
-            height=100,
-            disabled=True,
-        )
+        st.caption(presets[selected_preset])
         if st.button("✅ 이 프리셋 사용", key="use_preset"):
             st.session_state.profile = presets[selected_preset]
             save_profile(presets[selected_preset])
-            st.success(f"'{selected_preset}' 프로필이 적용됐습니다!")
+            st.success(f"'{selected_preset}' 적용됐습니다!")
 
-    # 현재 적용된 프로필
-    st.divider()
-    st.caption("현재 적용된 프로필")
     if st.session_state.profile:
-        st.info(st.session_state.profile[:120] + ("..." if len(st.session_state.profile) > 120 else ""))
+        st.info(st.session_state.profile[:80] + ("..." if len(st.session_state.profile) > 80 else ""))
     else:
-        st.warning("프로필 미설정 — 프로필 없이도 분석 가능합니다.")
+        st.warning("미설정")
+
+    st.divider()
+
+    # ── 상대방 프로필 ──
+    st.header("🧑‍🤝‍🧑 상대방 프로필")
+    st.caption("상대방의 성향을 설정하면 더 정확한 답변을 제안합니다.")
+
+    opp_tab1, opp_tab2 = st.tabs(["✏️ 직접 입력", "🎭 프리셋"])
+
+    with opp_tab1:
+        opp_text_input = st.text_area(
+            "상대방 성향 묘사",
+            value=st.session_state.opponent_profile,
+            height=120,
+            placeholder='예: "직장 상사로 권위적인 편이다. 감정 표현 없이 지시만 한다."',
+            key="opponent_text_input",
+        )
+        if st.button("💾 저장", key="save_opp_text"):
+            st.session_state.opponent_profile = opp_text_input
+            save_opponent_profile(opp_text_input)
+            st.success("저장됐습니다!")
+
+    with opp_tab2:
+        opp_presets = get_opponent_presets()
+        selected_opp_preset = st.selectbox(
+            "유형 선택",
+            options=list(opp_presets.keys()),
+            key="opp_preset_select",
+        )
+        st.caption(opp_presets[selected_opp_preset])
+        if st.button("✅ 이 프리셋 사용", key="use_opp_preset"):
+            st.session_state.opponent_profile = opp_presets[selected_opp_preset]
+            save_opponent_profile(opp_presets[selected_opp_preset])
+            st.success(f"'{selected_opp_preset}' 적용됐습니다!")
+
+    if st.session_state.opponent_profile:
+        st.info(st.session_state.opponent_profile[:80] + ("..." if len(st.session_state.opponent_profile) > 80 else ""))
+    else:
+        st.warning("미설정")
 
 
 # ──────────────────────────────────────────────
@@ -175,6 +181,7 @@ if analyze_btn:
                 original_text=message_input,
                 emotion_result=st.session_state.emotion_result,
                 character_profile=st.session_state.profile,
+                opponent_profile=st.session_state.opponent_profile,
             )
 
 # ──────────────────────────────────────────────

@@ -3,7 +3,7 @@ import base64
 import os
 from io import BytesIO
 import anthropic
-from config import ANTHROPIC_API_KEY, MODEL, PROFILE_PATH, PRESETS
+from config import ANTHROPIC_API_KEY, MODEL, PROFILE_PATH, OPPONENT_PROFILE_PATH, PRESETS, OPPONENT_PRESETS
 
 client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -96,3 +96,27 @@ def load_profile() -> str:
 def get_presets() -> dict:
     """사전 정의된 캐릭터 프리셋을 반환합니다."""
     return PRESETS
+
+
+def save_opponent_profile(profile_text: str) -> None:
+    """상대방 프로필을 JSON 파일에 저장합니다."""
+    data = {"profile": profile_text}
+    with open(OPPONENT_PROFILE_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
+def load_opponent_profile() -> str:
+    """저장된 상대방 프로필을 불러옵니다. 없으면 빈 문자열 반환."""
+    if not os.path.exists(OPPONENT_PROFILE_PATH):
+        return ""
+    try:
+        with open(OPPONENT_PROFILE_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("profile", "")
+    except (json.JSONDecodeError, IOError):
+        return ""
+
+
+def get_opponent_presets() -> dict:
+    """사전 정의된 상대방 프리셋을 반환합니다."""
+    return OPPONENT_PRESETS
