@@ -332,3 +332,9 @@ if st.session_state.responses:
         st.code(response_text, language=None)
 
     st.caption("💡 코드 블록 오른쪽 상단 복사 버튼으로 바로 복사할 수 있습니다.")
+
+st.markdown(
+    "<p style='text-align:right; color:#ccc; font-size:12px; margin-top:40px;'>"
+    "Contributed by 트타 A모 실장님</p>",
+    unsafe_allow_html=True,
+)
