@@ -9,7 +9,7 @@ from character_profile import (
 )
 
 st.set_page_config(
-    page_title="감정필터 Agent",
+    page_title="내 눈에 필터!",
     page_icon="💬",
     layout="wide",
 )
@@ -147,7 +147,7 @@ with st.sidebar:
 # ──────────────────────────────────────────────
 # 메인 영역
 # ──────────────────────────────────────────────
-st.title("💬 감정필터 Agent")
+st.title("💬 내 눈에 필터!")
 st.markdown("상대방 메시지를 붙여넣으면 **감정을 분석**하고 **내 캐릭터에 맞는 답변 3가지**를 제안합니다.")
 
 message_input = st.text_area(
