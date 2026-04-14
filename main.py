@@ -8,6 +8,7 @@ from character_profile import (
     save_opponent_profile,
     load_opponent_profile,
     get_opponent_presets,
+    extract_message_from_screenshot,
 )
 
 st.set_page_config(
@@ -156,29 +157,61 @@ with st.sidebar:
 st.title("💬 내 눈에 필터!")
 st.markdown("상대방 메시지를 붙여넣으면 **감정을 분석**하고 **내 캐릭터에 맞는 답변 3가지**를 제안합니다.")
 
-message_input = st.text_area(
-    "분석할 메시지를 입력하세요",
-    height=160,
-    placeholder="상대방이 보낸 문자·카톡·슬랙 메시지를 여기 붙여넣으세요...",
-    key="message_input",
-)
+input_tab1, input_tab2 = st.tabs(["💬 텍스트 입력", "📷 스크린샷 업로드"])
 
-col1, col2 = st.columns([1, 5])
-with col1:
-    analyze_btn = st.button("🔍 분석하기", type="primary", use_container_width=True)
+with input_tab1:
+    message_input = st.text_area(
+        "분석할 메시지를 입력하세요",
+        height=160,
+        placeholder="상대방이 보낸 문자·카톡·슬랙 메시지를 여기 붙여넣으세요...",
+        key="message_input",
+    )
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        analyze_btn = st.button("🔍 분석하기", type="primary", use_container_width=True, key="analyze_text")
+
+with input_tab2:
+    st.caption("카카오톡·문자·슬랙 대화 스크린샷을 올리면 상대방 메시지를 자동으로 추출합니다.")
+    uploaded_msg = st.file_uploader(
+        "스크린샷 업로드",
+        type=["png", "jpg", "jpeg", "webp"],
+        key="msg_screenshot",
+    )
+    if uploaded_msg is not None:
+        st.image(uploaded_msg, use_column_width=True)
+    analyze_img_btn = st.button("🔍 스크린샷 분석하기", type="primary", key="analyze_img_btn",
+                                disabled=uploaded_msg is None)
+
+# 분석 실행 (텍스트 또는 스크린샷)
+final_message = ""
 
 if analyze_btn:
     if not message_input.strip():
         st.warning("메시지를 입력해주세요.")
     else:
+        final_message = message_input
+
+if analyze_img_btn and uploaded_msg is not None:
+    with st.spinner("스크린샷에서 메시지 추출 중..."):
+        media_map = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
+        ext = uploaded_msg.name.split(".")[-1].lower()
+        media_type = media_map.get(ext, "image/png")
+        final_message = extract_message_from_screenshot(uploaded_msg.read(), media_type=media_type)
+    if final_message:
+        st.success("메시지 추출 완료!")
+        st.text_area("추출된 메시지", value=final_message, height=120, disabled=True)
+    else:
+        st.error("메시지를 추출하지 못했습니다. 다른 이미지를 시도해보세요.")
+
+if final_message:
         # 감정 분석
         with st.spinner("감정 분석 중..."):
-            st.session_state.emotion_result = analyze_emotion(message_input)
+            st.session_state.emotion_result = analyze_emotion(final_message)
 
         # 답변 생성
         with st.spinner("답변 초안 생성 중..."):
             st.session_state.responses = generate_responses(
-                original_text=message_input,
+                original_text=final_message,
                 emotion_result=st.session_state.emotion_result,
                 character_profile=st.session_state.profile,
                 opponent_profile=st.session_state.opponent_profile,
