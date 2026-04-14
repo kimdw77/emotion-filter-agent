@@ -1,4 +1,6 @@
+import io
 import streamlit as st
+from streamlit_paste_button import paste_image_button as pbutton
 from emotion_analyzer import analyze_emotion
 from response_generator import generate_responses
 from character_profile import (
@@ -171,16 +173,43 @@ with input_tab1:
         analyze_btn = st.button("🔍 분석하기", type="primary", use_container_width=True, key="analyze_text")
 
 with input_tab2:
-    st.caption("카카오톡·문자·슬랙 대화 스크린샷을 올리면 상대방 메시지를 자동으로 추출합니다.")
+    st.caption("카카오톡·문자·슬랙 대화 스크린샷을 올리거나 Ctrl+V로 붙여넣으세요. 상대방 메시지를 자동으로 추출합니다.")
+
+    # 붙여넣기 버튼
+    paste_result = pbutton(
+        "📋 Ctrl+V 이미지 붙여넣기",
+        background_color="#6c63ff",
+        hover_background_color="#5a52e0",
+        key="paste_btn",
+    )
+
+    st.markdown("<div style='text-align:center; color:#aaa; margin:4px 0'>또는</div>", unsafe_allow_html=True)
+
+    # 파일 업로드
     uploaded_msg = st.file_uploader(
-        "스크린샷 업로드",
+        "파일로 업로드",
         type=["png", "jpg", "jpeg", "webp"],
         key="msg_screenshot",
     )
-    if uploaded_msg is not None:
+
+    # 이미지 미리보기
+    img_bytes = None
+    img_media_type = "image/png"
+
+    if paste_result.image_data is not None:
+        st.image(paste_result.image_data, use_column_width=True)
+        buf = io.BytesIO()
+        paste_result.image_data.save(buf, format="PNG")
+        img_bytes = buf.getvalue()
+        img_media_type = "image/png"
+    elif uploaded_msg is not None:
         st.image(uploaded_msg, use_column_width=True)
+        img_bytes = uploaded_msg.read()
+        media_map = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
+        img_media_type = media_map.get(uploaded_msg.name.split(".")[-1].lower(), "image/png")
+
     analyze_img_btn = st.button("🔍 스크린샷 분석하기", type="primary", key="analyze_img_btn",
-                                disabled=uploaded_msg is None)
+                                disabled=img_bytes is None)
 
 # 분석 실행 (텍스트 또는 스크린샷)
 final_message = ""
@@ -191,12 +220,9 @@ if analyze_btn:
     else:
         final_message = message_input
 
-if analyze_img_btn and uploaded_msg is not None:
+if analyze_img_btn and img_bytes is not None:
     with st.spinner("스크린샷에서 메시지 추출 중..."):
-        media_map = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp"}
-        ext = uploaded_msg.name.split(".")[-1].lower()
-        media_type = media_map.get(ext, "image/png")
-        final_message = extract_message_from_screenshot(uploaded_msg.read(), media_type=media_type)
+        final_message = extract_message_from_screenshot(img_bytes, media_type=img_media_type)
     if final_message:
         st.success("메시지 추출 완료!")
         st.text_area("추출된 메시지", value=final_message, height=120, disabled=True)
