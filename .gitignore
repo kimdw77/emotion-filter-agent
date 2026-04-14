@@ -1,0 +1,4 @@
+.env
+character_profile.json
+__pycache__/
+*.pyc
